@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SSE Firefox Bug Example</title>
+  </head>
+  <body>
+    <h1>SSE Firefox Bug Example</h1>
+    <div>
+      <label for="message">
+        Message:<br />
+        <textarea name="message" id="msg" cols="30" rows="10"></textarea>
+      </label>
+      <button id="send">Send</button>
+    </div>
+
+    <div>
+      <label for="output">
+        Output:<br />
+        <div
+          id="output"
+          style="
+            height: 200px;
+            width: 400px;
+            overflow: auto;
+            background-color: lightgray;
+            border: 1px solid black;
+            border-radius: 5px;
+          "
+        ></div>
+      </label>
+    </div>
+
+    <script>
+      let btn = undefined;
+      let msg = undefined;
+      let output = undefined;
+
+      const formatter = new Intl.DateTimeFormat("de-CH", {
+        hour: "numeric",
+        minute: "numeric",
+        second: "numeric",
+      });
+
+      const appendData = (str) => {
+        const el = document.createElement("div");
+        el.innerText = `${formatter.format(new Date())}: ${str}`;
+        output.appendChild(el);
+        el.scrollIntoView();
+      };
+
+      const onClick = async (e) => {
+        await fetch("http://localhost:3000/fact", {
+          method: "POST",
+          //mode: 'cors',
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({ msg: msg.value }),
+        });
+        
+        msg.value = "";
+      };
+
+      const onMessage = (e) => {
+        if (e?.data) {
+          const m = JSON.parse(e.data);
+          if(Array.isArray(m)) {
+            m.forEach(msg => appendData(msg.msg));
+            return;
+          }
+
+          appendData(m.msg);
+        }
+      };
+
+      const onError = (e) => {
+        //output.
+      };
+
+      onload = () => {
+        btn = document.getElementById("send");
+        msg = document.getElementById("msg");
+        output = document.getElementById("output");
+
+        btn.addEventListener("click", onClick);
+
+        const evtSrc = new EventSource("http://localhost:3000/events");
+        evtSrc.onmessage = onMessage;
+        evtSrc.onerror = onError;
+      };
+    </script>
+  </body>
+</html>
